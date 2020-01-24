@@ -36,43 +36,44 @@ import mimetypes
 
 logging.basicConfig(level=logging.DEBUG, format='%(name)s: %(message)s',)
 
-def main():
-    run()
-
 class MyWebServer(socketserver.BaseRequestHandler):
 
     def __init__(self, request, client_address, server):
         self.logger = logging.getLogger('MyWebServer')
         self.content_dir = 'www'
-        self.logger.debug('__init__')
+        # self.logger.debug('__init__')
         socketserver.BaseRequestHandler.__init__(self, request, client_address, server)
 
     def setup(self):
-        self.logger.debug('setup')
+        # self.logger.debug('setup')
         return socketserver.BaseRequestHandler.setup(self)
 
     def handle(self):
-        self.logger.debug('handle')
+        # self.logger.debug('handle')
         self.data = self.request.recv(1024).strip().decode()
 
-        # Put heads into dictionary for future use
-        split_headers = self.data.split(' ')
-        headers = {}
-        for item in split_headers:
-            if ": " in item:
-                split_item = item.split(": ")
-                headers[split_item[0]] = split_item[1]
+        # Put heads into dictionary for future use (No longer needed)
+        # split_headers = self.data.split(' ')
+        # headers = {}
+        # for item in split_headers:
+        #     if ": " in item:
+        #         split_item = item.split(": ")
+        #         headers[split_item[0]] = split_item[1]
 
         response = ""
         type = ""
         request_method = self.data.split(' ')[0]
+
+        # Set reply to get GET method
         if request_method == "GET":
             file_requested = self.data.split(" ")[1]
+            # Check for route moving
             if "css" not in file_requested:
                 type = "text/html"
                 if "index.html" not in file_requested:
+                    # 301 Moved Permanently checking
                     if file_requested[-1] != "/":
-                        response_header = self._generate_headers(301, type)
+                        response_header = self.generate_headers(301, type)
                         response_header += "Location: " + file_requested + "/"
                         self.request.sendall(response_header.encode())
                         return
@@ -80,33 +81,34 @@ class MyWebServer(socketserver.BaseRequestHandler):
                         file_requested += "index.html"
             else:
                 type = "text/css"
-            filepath_to_serve = self.content_dir + file_requested
+            filepath = self.content_dir + file_requested
 
             try:
-                f = open(filepath_to_serve, 'rb')
+                f = open(filepath, 'rb')
                 response_data = f.read()
                 f.close()
-                response_header = self._generate_headers(200, type)
+                response_header = self.generate_headers(200, type)
 
             except Exception as e:
-                self.logger.debug("File not found. Serving 404 page.")
-                response_header = self._generate_headers(404, type)
+                # self.logger.debug("File not found. Serving 404 page.")
+                response_header = self.generate_headers(404, type)
                 response_data = b"<html><body><center><h1>Error 404: File not found</h1></center><p>Head back to <a href='/index.html'>Index</a>.</p></body></html>"
 
             response = response_header.encode()
             response += response_data
             self.request.sendall(response)
             return
+        # For everything else, return a 405
         else:
-            response = self._generate_headers(405, "text/html").encode()
+            response = self.generate_headers(405, "text/html").encode()
             self.request.sendall(response)
             return
 
     def finish(self):
-        self.logger.debug('finish')
+        # self.logger.debug('finish')
         return socketserver.BaseRequestHandler.finish(self)
 
-    def _generate_headers(self, response_code, type):
+    def generate_headers(self, response_code, type):
         header = ''
         if response_code == 200:
             header += 'HTTP/1.1 200 OK\n'
